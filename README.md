@@ -1,5 +1,7 @@
 # solana-hackthon
 
+Call Phantom Wallet after 3 seconds.
+
 ## Project setup
 ```
 yarn install
