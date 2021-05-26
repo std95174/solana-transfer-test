@@ -40,56 +40,13 @@
 </template>
 
 <script>
-import {
-  Account,
-  Connection,
-  PublicKey,
-  LAMPORTS_PER_SOL,
-  SystemProgram,
-  TransactionInstruction,
-  Transaction,
-  sendAndConfirmTransaction
-} from "@solana/web3.js";
-import { Token } from "@solana/spl-token";
-
 export default {
   name: "App",
 
   data: () => ({
     //
   }),
-  methods: {
-    async establishConnection() {
-      const rpcUrl = "https://devnet.solana.com";
-      let connection = new Connection(rpcUrl, "confirmed");
-      const version = await connection.getVersion();
-      console.log("Connection to cluster established:", rpcUrl, version);
-    }
-  },
-  async mounted() {
-    setTimeout(async () => {
-      await window.solana.connect();
-      const provider = window.solana;
-      console.log(provider.publicKey.toString());
-      const connection = new Connection("https://devnet.solana.com");
-      const { blockhash } = await connection.getRecentBlockhash();
 
-      let transaction = new Transaction().add(
-        SystemProgram.transfer({
-          fromPubkey: provider.publicKey,
-          toPubkey: provider.publicKey,
-          lamports: 100000000
-        })
-      );
-      transaction.feePayer = provider.publicKey;
-      transaction.recentBlockhash = blockhash;
-
-      let signed = await provider.signTransaction(transaction);
-      let signature = await connection.sendRawTransaction(signed.serialize());
-      await connection.confirmTransaction(signature);
-      console.log("received!");
-    }, 3000);
-  },
   async created() {}
 };
 </script>

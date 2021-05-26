@@ -9,143 +9,94 @@
           height="200"
         />
       </v-col>
-
-      <v-col class="mb-4">
-        <h1 class="display-2 font-weight-bold mb-3">
-          Welcome to Vuetify
-        </h1>
-
-        <p class="subheading font-weight-regular">
-          For help and collaboration with other Vuetify developers,
-          <br>please join our online
-          <a
-            href="https://community.vuetifyjs.com"
-            target="_blank"
-          >Discord Community</a>
-        </p>
-      </v-col>
-
-      <v-col
-        class="mb-5"
-        cols="12"
-      >
-        <h2 class="headline font-weight-bold mb-3">
-          What's next?
-        </h2>
-
-        <v-row justify="center">
-          <a
-            v-for="(next, i) in whatsNext"
-            :key="i"
-            :href="next.href"
-            class="subheading mx-3"
-            target="_blank"
-          >
-            {{ next.text }}
-          </a>
-        </v-row>
-      </v-col>
-
-      <v-col
-        class="mb-5"
-        cols="12"
-      >
-        <h2 class="headline font-weight-bold mb-3">
-          Important Links
-        </h2>
-
-        <v-row justify="center">
-          <a
-            v-for="(link, i) in importantLinks"
-            :key="i"
-            :href="link.href"
-            class="subheading mx-3"
-            target="_blank"
-          >
-            {{ link.text }}
-          </a>
-        </v-row>
-      </v-col>
-
-      <v-col
-        class="mb-5"
-        cols="12"
-      >
-        <h2 class="headline font-weight-bold mb-3">
-          Ecosystem
-        </h2>
-
-        <v-row justify="center">
-          <a
-            v-for="(eco, i) in ecosystem"
-            :key="i"
-            :href="eco.href"
-            class="subheading mx-3"
-            target="_blank"
-          >
-            {{ eco.text }}
-          </a>
-        </v-row>
-      </v-col>
+      <v-row>
+        <v-spacer>Your PublicKey: {{ publicKey }}</v-spacer>
+      </v-row>
+      <v-text-field v-model="amount"></v-text-field>
+      <v-btn @click="transferSOL">Transfer SOL</v-btn>
+      <v-btn @click="getProvider">Connect to phantom</v-btn>
     </v-row>
   </v-container>
 </template>
 
 <script>
-  export default {
-    name: 'HelloWorld',
+import {
+  Account,
+  Connection,
+  PublicKey,
+  LAMPORTS_PER_SOL,
+  SystemProgram,
+  TransactionInstruction,
+  Transaction,
+  sendAndConfirmTransaction
+} from "@solana/web3.js";
+import { Token, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
-    data: () => ({
-      ecosystem: [
-        {
-          text: 'vuetify-loader',
-          href: 'https://github.com/vuetifyjs/vuetify-loader',
-        },
-        {
-          text: 'github',
-          href: 'https://github.com/vuetifyjs/vuetify',
-        },
-        {
-          text: 'awesome-vuetify',
-          href: 'https://github.com/vuetifyjs/awesome-vuetify',
-        },
-      ],
-      importantLinks: [
-        {
-          text: 'Documentation',
-          href: 'https://vuetifyjs.com',
-        },
-        {
-          text: 'Chat',
-          href: 'https://community.vuetifyjs.com',
-        },
-        {
-          text: 'Made with Vuetify',
-          href: 'https://madewithvuejs.com/vuetify',
-        },
-        {
-          text: 'Twitter',
-          href: 'https://twitter.com/vuetifyjs',
-        },
-        {
-          text: 'Articles',
-          href: 'https://medium.com/vuetify',
-        },
-      ],
-      whatsNext: [
-        {
-          text: 'Explore components',
-          href: 'https://vuetifyjs.com/components/api-explorer',
-        },
-        {
-          text: 'Select a layout',
-          href: 'https://vuetifyjs.com/getting-started/pre-made-layouts',
-        },
-        {
-          text: 'Frequently Asked Questions',
-          href: 'https://vuetifyjs.com/getting-started/frequently-asked-questions',
-        },
-      ],
-    }),
+const rpcUrl = "https://devnet.solana.com";
+let connection = new Connection(rpcUrl, "confirmed");
+let provider;
+
+export default {
+  name: "HelloWorld",
+
+  data: () => ({
+    publicKey: "",
+    amount: 0
+  }),
+  methods: {
+    async transferSOL() {
+      const { blockhash } = await connection.getRecentBlockhash();
+      let transaction = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: provider.publicKey,
+          toPubkey: provider.publicKey,
+          lamports: this.amount * LAMPORTS_PER_SOL
+        })
+      );
+      transaction.feePayer = provider.publicKey;
+      transaction.recentBlockhash = blockhash;
+      let signed = await provider.signTransaction(transaction);
+      let signature = await connection.sendRawTransaction(signed.serialize());
+      await connection.confirmTransaction(signature);
+      console.log("received!");
+    },
+    async getProvider() {
+      if (window.solana) {
+        console.log("solana is there");
+        provider = window.solana;
+        const vm = this;
+        if (provider.isPhantom) {
+          provider.on("connect", () => {
+            console.log("Connected to wallet " + provider.publicKey.toBase58());
+            vm.publicKey = provider.publicKey.toBase58();
+          });
+          provider.on("disconnect", () => {
+            console.log("Disconnected from wallet");
+          });
+          // try to eagerly connect
+          provider.connect(/**{ onlyIfTrusted: true }**/);
+          return () => {
+            provider.disconnect();
+          };
+        }
+      }
+    }
+  },
+  async mounted() {
+    const version = await connection.getVersion();
+    console.log("Connection to cluster established:", rpcUrl, version);
+    // const vm = this;
+
+    // setTimeout(async () => {
+    //   window.solana.connect();
+    //   window.solana.on("connect", () => {
+    //     console.log("connected!");
+
+    //     provider = window.solana;
+    //     console.log(provider);
+    //     vm.publicKey = provider.publicKey.toString();
+    //   });
+    // }, 1000);
   }
+};
 </script>
